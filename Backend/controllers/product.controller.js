@@ -25,7 +25,7 @@ const getProducts = asyncHandler(async (req, res) => {
 const getProductById = asyncHandle(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (product) {
-    res.json(product);
+    return res.json(product);
   }
   res.status(404);
   throw new Error("Product not found");
@@ -34,6 +34,7 @@ const getProductById = asyncHandle(async (req, res) => {
 const createProduct = asyncHandle(async (req, res) => {
   const createdProduct = new Product.create({
     name: "sample name",
+    user: req.user._id,
     price: 0,
     image: "/uploads/sample.png",
     category: "sample category",
@@ -77,7 +78,7 @@ const deleteProduct = asyncHandle(async (req, res) => {
   }
 });
 
-const createdProductReview = asyncHandle(async (req, res) => {
+const createProductReview = asyncHandle(async (req, res) => {
   const { rating, comment } = req.body;
   const product = await Product.findById(req.params.id);
 
@@ -117,5 +118,5 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
-  createdProductReview,
+  createProductReview,
 };

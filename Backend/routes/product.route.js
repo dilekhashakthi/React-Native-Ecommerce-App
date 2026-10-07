@@ -5,22 +5,23 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
-  createdProductReview,
+  createProductReview,
 } = require("../controllers/product.controller");
+const { protect, admin } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
 // api/v1/products/
-router.route("/").get(getProducts).post(createProduct);
+router.route("/").get(getProducts).post(protect, admin, createProduct);
 
 // api/v1/products/:id
 router
   .route("/:id")
   .get(getProductById)
-  .put(updateProduct)
-  .delete(deleteProduct);
+  .put(protect, admin, updateProduct)
+  .delete(protect, admin, deleteProduct);
 
 // api/v1/products/:id/reviews
-router.route("/:id/reviews").post(createdProductReview);
+router.route("/:id/reviews").post(protect, createProductReview);
 
 module.exports = router;
