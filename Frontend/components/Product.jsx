@@ -45,7 +45,7 @@ const Product = ({ product }) => {
             <View
               style={[
                 styles.availability,
-                styles.countInStock > 0 ? styles.available : styles.unavailable,
+                product.countInStock > 0 ? styles.available : styles.unavailable,
               ]}
             >
               <Text style={styles.availabilityText}>
