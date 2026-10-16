@@ -1,15 +1,12 @@
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
+require("dotenv").config();
 
+const mongoose = require("mongoose");
 const users = require("./data/users");
 const products = require("./data/products");
 
-const User = require("./models/userModel");
-const Product = require("./models/productModel");
+const User = require("./models/User");
+const Product = require("./models/Product");
 const connectDB = require("./config/db");
-
-dotenv.config();
-connectDB();
 
 const importData = async () => {
   try {
@@ -46,8 +43,17 @@ const destroyData = async () => {
   }
 };
 
-if (process.argv[2] === "-d") {
-  destroyData();
-} else {
-  importData();
+async function runSeeder() {
+  await connectDB();
+
+  if (process.argv[2] === "-d") {
+    await destroyData();
+  } else {
+    await importData();
+  }
 }
+
+runSeeder().catch((error) => {
+  console.error("Seeder failed:", error.message);
+  process.exit(1);
+});

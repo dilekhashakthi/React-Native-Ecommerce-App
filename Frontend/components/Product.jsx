@@ -1,4 +1,10 @@
-import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
+} from "react-native";
 import { Link } from "expo-router";
 import Rating from "./Rating";
 import { Colors } from "../constants/Utils";
@@ -17,6 +23,7 @@ const Product = ({ product }) => {
   return (
     <Link
       href={{ pathname: "/ProductScreen", params: { productId: product._id } }}
+      asChild
     >
       <TouchableOpacity activeOpacity={0.8} style={styles.container}>
         <View style={styles.imageWrapper}>
@@ -29,37 +36,37 @@ const Product = ({ product }) => {
               console.log("Product - failed url", getImageUrl(product.image));
             }}
           />
+        </View>
 
-          <View style={styles.infoArea}>
-            <Text
-              style={styles.productName}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {product.name}
+        <View style={styles.infoArea}>
+          <Text
+            style={styles.productName}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {product.name}
+          </Text>
+        </View>
+
+        <View style={styles.pricing}>
+          <Text style={styles.currentPrice}>${product.price}</Text>
+          <View
+            style={[
+              styles.availability,
+              product.countInStock > 0 ? styles.available : styles.unavailable,
+            ]}
+          >
+            <Text style={styles.availabilityText}>
+              {product.countInStock > 0 ? "In Stock" : "Sold Out"}
             </Text>
           </View>
+        </View>
 
-          <View style={styles.pricing}>
-            <Text style={styles.currentPrice}>${product.price}</Text>
-            <View
-              style={[
-                styles.availability,
-                product.countInStock > 0 ? styles.available : styles.unavailable,
-              ]}
-            >
-              <Text style={styles.availabilityText}>
-                {product.countInStock > 0 ? "In Stock" : "Sold Out"}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.ratingRow}>
-            <Rating
-              value={product.rating}
-              text={`${product.numReview} reviews`}
-            />
-          </View>
+        <View style={styles.ratingRow}>
+          <Rating
+            value={product.rating}
+            text={`${product.numReviews} reviews`}
+          />
         </View>
       </TouchableOpacity>
     </Link>
@@ -70,12 +77,13 @@ export default Product;
 
 const styles = StyleSheet.create({
   container: {
-    width: "45%",
+    flex: 1,
+    minWidth: 0,
     backgroundColor: Colors.white,
     borderRadius: 15,
-    padding: 16,
+    padding: 12,
     marginVertical: 8,
-    marginHorizontal: "2%",
+    marginHorizontal: 6,
     shadowColor: Colors.darkGray,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -91,7 +99,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     alignItems: "center",
     justifyContent: "center",
-    height: 140,
+    height: 160,
     padding: 8,
     borderWidth: 1,
     borderColor: Colors.lightGray,
@@ -101,15 +109,16 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   infoArea: {
-    paddingHorizontal: 4,
+    paddingTop: 10,
+    paddingHorizontal: 2,
   },
   productName: {
     fontSize: 15,
     fontWeight: "600",
     color: Colors.textColor,
-    marginBottom: 10,
-    height: 36,
-    lineHeight: 20,
+    marginBottom: 8,
+    minHeight: 38,
+    lineHeight: 19,
   },
   pricing: {
     flexDirection: "row",
@@ -123,7 +132,8 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   availability: {
-    padding: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 20,
   },
   availabilityText: {

@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
-const reviewSchema = new mongoose.Schema(
-  {
+const reviewSchema = new mongoose.Schema({
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -20,11 +19,10 @@ const reviewSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timeseries: true },
+  { timestamps: true },
 );
 
-const productSchema = new mongoose.Schema(
-  {
+const productSchema = new mongoose.Schema({
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

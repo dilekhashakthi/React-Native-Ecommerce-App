@@ -1,7 +1,7 @@
 const asyncHandle = require("../utils/asyncHandler");
 const Product = require("../models/Product");
 
-const getProducts = asyncHandler(async (req, res) => {
+const getProducts = asyncHandle(async (req, res) => {
   const limit = 8;
   const page = Number(req.query.pageNumber) || 1;
   const skip = (page - 1) * limit;

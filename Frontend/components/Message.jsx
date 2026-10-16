@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Colors } from "../constants/Urls";
+import { Colors } from "../constants/Utils";
 
 const Message = ({ variant = "error", children }) => {
   const variantStyles = {

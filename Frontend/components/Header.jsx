@@ -9,12 +9,12 @@ import {
 import React, { useState, useCallback } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../constants/Utils";
-import { useNavigation } from "@react-navigation/native";
+// import { useNavigation } from "@react-navigation/native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 
 const Header = () => {
   const [searchText, setSearchText] = useState("");
-  const navigation = useNavigation();
+  // const navigation = useNavigation();
   const router = useRouter();
   const { keyword = "" } = useLocalSearchParams();
 
@@ -35,7 +35,7 @@ const Header = () => {
     });
   };
 
-  const showAllproducts = () => {
+  const showAllProducts = () => {
     setSearchText("");
     router.setParams({
       keyword: "",
@@ -64,7 +64,7 @@ const Header = () => {
             style={styles.searchIcon}
           />
           <TextInput
-            styles={styles.searchInput}
+            style={styles.searchInput}
             placeholder="Search Products..."
             value={searchText}
             onChangeText={setSearchText}
@@ -77,31 +77,29 @@ const Header = () => {
               <Ionicons name="close-circle" size={20} color={Colors.primary} />
             </TouchableOpacity>
           ) : null}
-
-          {searchText.length > 0 && (
-            <TouchableOpacity
-              onPress={handleSearch}
-              style={styles.searchButton}
-            >
-              <Text style={styles.searchButtonText}>Search</Text>
-            </TouchableOpacity>
-          )}
-
-          {keyword && (
-            <View style={styles.activeFilterRow}>
-              <Text style={styles.filterText}>
-                Showing result for: `${keyword}`
-              </Text>
-              <TouchableOpacity style={styles.showAllButtonText}>
-                Show All Products
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.bottomRow}>
-            <Text style={styles.welcomeText}>{/* TODO */}</Text>
-          </View>
         </View>
+
+        {searchText.length > 0 && (
+          <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+            <Text style={styles.searchButtonText}>Search</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {keyword ? (
+        <View style={styles.activeFilterRow}>
+          <Text style={styles.filterText}>Showing result for: {keyword}</Text>
+          <TouchableOpacity
+            style={styles.showAllButton}
+            onPress={showAllProducts}
+          >
+            <Text style={styles.showAllButtonText}>Show All Products</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <View style={styles.bottomRow}>
+        <Text style={styles.welcomeText}>{/* TODO */}</Text>
       </View>
     </View>
   );
@@ -211,7 +209,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "italic",
   },
-  showAllButtonText: {
+  showAllButton: {
     backgroundColor: Colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
