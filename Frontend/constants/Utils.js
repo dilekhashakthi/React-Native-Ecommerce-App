@@ -7,6 +7,7 @@ export const Colors = {
   darkGray: "#1A1A1A",
   textColor: "#212529",
   textRed: "#b93d30",
+  danger: "#b93d30",
   secondaryTextColor: "#666",
   starGold: "#FFD700", // Not used (assuming Rating component handles its own star color)
   error: "#fadbd8", // Not used (only errorLight, errorBorder are used for Message component, not raw 'error' for general styles)

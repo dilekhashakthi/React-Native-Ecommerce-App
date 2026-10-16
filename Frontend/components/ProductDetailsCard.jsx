@@ -28,14 +28,16 @@ const ProductDetailsCard = ({ product, qty, setQty }) => {
           <Text
             style={[
               styles.statusText,
-              product.countInStock > 0 ? styles.inStock : styles.outOfStock,
+              Number(product?.countInStock) > 0
+                ? styles.inStock
+                : styles.outOfStock,
             ]}
           >
-            {product.countInStock > 0 ? "In Stock" : "Out Of Stock"}
+            {Number(product?.countInStock) > 0 ? "In Stock" : "Out Of Stock"}
           </Text>
         </View>
 
-        {product.countInStock > 0 && (
+        {Number(product?.countInStock) > 0 && (
           <View style={styles.quantityContainer}>
             <Text style={styles.label}>Quantity:</Text>
             <View style={styles.pickerWrapper}>
@@ -45,7 +47,7 @@ const ProductDetailsCard = ({ product, qty, setQty }) => {
                 style={styles.picker}
                 itemStyle={styles.pickerItem}
               >
-                {[...Array(product.countInStock).keys()].map((x) => (
+                {[...Array(Number(product.countInStock)).keys()].map((x) => (
                   <Picker.Item
                     key={x + 1}
                     label={(x + 1).toString()}
@@ -58,9 +60,32 @@ const ProductDetailsCard = ({ product, qty, setQty }) => {
           </View>
         )}
 
-        <TouchableOpacity style={[styles.addToCartButton]}>
-          <Ionicons name="cart-outline" size={20} color={Colors.primary} />
-          <Text styles={styles.addToCartText}>Add To Cart</Text>
+        <TouchableOpacity
+          style={[
+            styles.addToCartButton,
+            Number(product?.countInStock) <= 0 && styles.disabledButton,
+          ]}
+          disabled={Number(product?.countInStock) <= 0}
+        >
+          <Ionicons
+            name="cart-outline"
+            size={20}
+            color={
+              Number(product?.countInStock) <= 0
+                ? Colors.secondaryTextColor
+                : Colors.white
+            }
+          />
+          <Text
+            style={[
+              styles.addToCartText,
+              Number(product?.countInStock) <= 0 && styles.disabledButtonText,
+            ]}
+          >
+            {Number(product?.countInStock) <= 0
+              ? "Out Of Stock"
+              : "Add To Cart"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -107,6 +132,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 20,
+    textAlign: "justify",
   },
   statusQuantityCart: {
     paddingTop: 15,
@@ -129,9 +155,11 @@ const styles = StyleSheet.create({
   },
   inStock: {
     color: Colors.success,
+    fontWeight: "700",
   },
   outOfStock: {
-    color: Colors.danger,
+    color: Colors.danger || Colors.textRed,
+    fontWeight: "700",
   },
   quantityContainer: {
     flexDirection: "row",
@@ -171,5 +199,14 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: "bold",
     fontSize: 16,
+    textAlign: "center",
+  },
+  disabledButton: {
+    backgroundColor: Colors.lightGray,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  disabledButtonText: {
+    color: Colors.secondaryTextColor,
   },
 });

@@ -9,7 +9,6 @@ import {
 import React, { useState, useCallback } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../constants/Utils";
-// import { useNavigation } from "@react-navigation/native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 
 const Header = () => {
