@@ -19,7 +19,7 @@ const ProductImageCard = ({ imageUrl }) => {
         source={{ uri: getImageUrl(imageUrl) }}
         style={styles.productImage}
         resizeMode="contain"
-        onError={() => {
+        onError={(e) => {
           console.log("Product image card error", e.nativeEvent.error);
         }}
         onLoad={() => {

@@ -10,10 +10,13 @@ import {
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import Toast from "react-native-toast-message";
-import { useRouter, useLocalSearchParams } from "expo-router";
 import { useGetProductDetailsQuery } from "../../redux/slices/productApiSlice";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/Utils";
+import { useDispatch, useSelector } from "react-redux";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { addToCart } from "../../redux/slices/cartSlice";
+
 import Message from "../../components/Message";
 import ProductImageCard from "../../components/ProductImageCard";
 import ProductDetailsCard from "../../components/ProductDetailsCard";
@@ -21,6 +24,8 @@ import ProductDetailsCard from "../../components/ProductDetailsCard";
 const ProductScreen = () => {
   const router = useRouter();
   const { productId } = useLocalSearchParams();
+  const dispatch = useDispatch();
+
   const [qty, setQty] = useState(1);
 
   useEffect(() => {
@@ -84,6 +89,24 @@ const ProductScreen = () => {
     );
   }
 
+  const handleAddToCart = () => {
+    if (product) {
+      dispatch(addToCart({ ...product, qty }));
+      router.push("/(screens)/Cart");
+    } else {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2:
+          "Product data not loaded yet. Can't add to cart. Please try again.",
+        position: "top",
+        visibilityTime: 7000,
+      });
+    }
+  };
+
+  const disabledAddToCart = product?.countInStock === 0;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -94,7 +117,13 @@ const ProductScreen = () => {
           <Ionicons name="arrow-back-circle" size={40} color={Colors.primary} />
         </TouchableOpacity>
         <ProductImageCard imageUrl={product.image} />
-        <ProductDetailsCard product={product} qty={qty} setQty={setQty} />
+        <ProductDetailsCard
+          product={product}
+          qty={qty}
+          setQty={setQty}
+          handleAddToCart={handleAddToCart}
+          disableAddToCart={disabledAddToCart}
+        />
       </ScrollView>
     </SafeAreaView>
   );

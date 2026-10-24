@@ -5,7 +5,13 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import Rating from "./Rating";
 import { Colors } from "../constants/Utils";
 
-const ProductDetailsCard = ({ product, qty, setQty }) => {
+const ProductDetailsCard = ({
+  product,
+  qty,
+  setQty,
+  handleAddToCart,
+  disableAddToCart,
+}) => {
   if (!product) {
     return null;
   }
@@ -62,10 +68,10 @@ const ProductDetailsCard = ({ product, qty, setQty }) => {
 
         <TouchableOpacity
           style={[
-            styles.addToCartButton,
-            Number(product?.countInStock) <= 0 && styles.disabledButton,
+            styles.addToCartButton, disableAddToCart && styles.disabledButton,
           ]}
-          disabled={Number(product?.countInStock) <= 0}
+          onPress={handleAddToCart}
+          disabled={disableAddToCart}
         >
           <Ionicons
             name="cart-outline"
@@ -200,6 +206,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
     textAlign: "center",
+  },
+  disableAddToCart: {
+    backgroundColor: Colors.lightGray,
+    opacity: 0.7,
   },
   disabledButton: {
     backgroundColor: Colors.lightGray,

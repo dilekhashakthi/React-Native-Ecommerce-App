@@ -10,10 +10,12 @@ import React, { useState, useCallback } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../constants/Utils";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSelector } from "react-redux";
 
 const Header = () => {
   const [searchText, setSearchText] = useState("");
-  // const navigation = useNavigation();
+  const { cartItems } = useSelector((state) => state.cart);
+
   const router = useRouter();
   const { keyword = "" } = useLocalSearchParams();
 
@@ -48,9 +50,18 @@ const Header = () => {
           style={styles.logo}
           source={require("../assets/images/logo.png")}
         />
-        <TouchableOpacity onPress={() => {}} style={styles.cartIconContainer}>
+        <TouchableOpacity
+          onPress={() => router.push("/(screens)/Cart")}
+          style={styles.cartIconContainer}
+        >
           <Ionicons name="cart" size={35} color={Colors.primary} />
-          {/* TODO */}
+          {cartItems.length > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>
+                {cartItems.reduce((acc, item) => acc + item.qty, 0)}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -180,16 +191,20 @@ const styles = StyleSheet.create({
     top: -5,
     right: -5,
     backgroundColor: Colors.textRed,
-    borderRadius: 20,
-    width: 20,
+    borderRadius: 10,
+    minWidth: 20,
     height: 20,
+    paddingHorizontal: 3,
     justifyContent: "center",
-    alignContent: "center",
+    alignItems: "center",
   },
   cartBadgeText: {
     color: Colors.white,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
+    textAlign: "center",
+    textAlignVertical: "center",
+    includeFontPadding: false,
   },
   welcomeText: {
     fontSize: 16,
