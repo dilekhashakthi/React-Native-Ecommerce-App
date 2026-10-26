@@ -15,6 +15,7 @@ import { useSelector } from "react-redux";
 const Header = () => {
   const [searchText, setSearchText] = useState("");
   const { cartItems } = useSelector((state) => state.cart);
+  const { userInfo } = useSelector((state) => state.auth);
 
   const router = useRouter();
   const { keyword = "" } = useLocalSearchParams();
@@ -109,7 +110,9 @@ const Header = () => {
       ) : null}
 
       <View style={styles.bottomRow}>
-        <Text style={styles.welcomeText}>{/* TODO */}</Text>
+        <Text style={styles.welcomeText}>
+          {userInfo && `Welcome ${userInfo.name.split(" ")[0]}`}
+        </Text>
       </View>
     </View>
   );

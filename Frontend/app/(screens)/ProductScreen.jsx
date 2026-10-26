@@ -10,7 +10,10 @@ import {
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import Toast from "react-native-toast-message";
-import { useGetProductDetailsQuery } from "../../redux/slices/productApiSlice";
+import {
+  useGetProductDetailsQuery,
+  useCreateReviewMutation,
+} from "../../redux/slices/productApiSlice";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/Utils";
 import { useDispatch, useSelector } from "react-redux";
@@ -20,6 +23,8 @@ import { addToCart } from "../../redux/slices/cartSlice";
 import Message from "../../components/Message";
 import ProductImageCard from "../../components/ProductImageCard";
 import ProductDetailsCard from "../../components/ProductDetailsCard";
+import ProductReviewSection from "../../components/ProductReviewSection";
+import AddReviewModel from "../../components/AddReviewModel";
 
 const ProductScreen = () => {
   const router = useRouter();
@@ -27,6 +32,13 @@ const ProductScreen = () => {
   const dispatch = useDispatch();
 
   const [qty, setQty] = useState(1);
+  const [isReviewModelOpen, setIsReviewModelOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const { userInfo } = useSelector((state) => state.auth);
+
+  const [createReview, { isLoading: loadingProductReview }] =
+    useCreateReviewMutation();
 
   useEffect(() => {
     if (!productId) {
@@ -59,11 +71,10 @@ const ProductScreen = () => {
   }
 
   if (error) {
-    const errorMessage = error?.data?.message || error.error;
+    const errorMessage = error?.data?.message || error?.error || "Something went wrong. Please try again.";
 
     return (
       <View style={styles.center}>
-        {/* <Message variant="error">{error.message}</Message> */}
         <Message variant="error">{errorMessage}</Message>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -107,6 +118,64 @@ const ProductScreen = () => {
 
   const disabledAddToCart = product?.countInStock === 0;
 
+  const submitReviewHandler = async () => {
+    try {
+      if (!rating || rating === 0) {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Please provide a rating before submitting the review.",
+          position: "top",
+          visibilityTime: 7000,
+        });
+        return;
+      }
+
+      if (!comment.trim()) {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Please provide a comment before submitting the review.",
+          position: "top",
+          visibilityTime: 7000,
+        });
+        return;
+      }
+
+      await createReview({
+        productId,
+        rating,
+        comment,
+      }).unwrap();
+
+      refetch();
+
+      Toast.show({
+        type: "success",
+        text1: "Review Submitted",
+        text2: "Your review has been submitted successfully.",
+        position: "top",
+        visibilityTime: 7000,
+      });
+
+      setRating(0);
+      setComment("");
+      setIsReviewModelOpen(false);
+    } catch (error) {
+      const errorMessage = error?.data?.message || error?.error || "Something went wrong. Please try again.";
+      if (errorMessage.toLowerCase().includes("already reviewed")) {
+        setIsReviewModelOpen(false);
+      }
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: errorMessage,
+        position: "top",
+        visibilityTime: 7000,
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -124,7 +193,24 @@ const ProductScreen = () => {
           handleAddToCart={handleAddToCart}
           disableAddToCart={disabledAddToCart}
         />
+
+        <ProductReviewSection
+          reviews={product.reviews}
+          userInfo={userInfo}
+          onAddReviewPress={() => setIsReviewModelOpen(true)}
+        />
       </ScrollView>
+
+      <AddReviewModel
+        isVisible={isReviewModelOpen}
+        onClose={() => setIsReviewModelOpen(false)}
+        rating={rating}
+        setRating={setRating}
+        comment={comment}
+        setComment={setComment}
+        onSubmit={submitReviewHandler}
+        isLoading={loadingProductReview}
+      />
     </SafeAreaView>
   );
 };

@@ -15,7 +15,8 @@
     "react-dom": "^19.2.3",
     "react-native": "0.86.3",
     "react-native-toast-message": "^2.5.2",
-    "react-redux": "^9.3.0"
+    "react-redux": "^9.3.0",
+    "redux-persist": "^6.0.0"
   },
   "scripts": {
     "start": "expo start",
