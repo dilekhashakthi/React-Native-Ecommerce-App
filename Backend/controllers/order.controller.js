@@ -71,16 +71,25 @@ const updateOrderToPaid = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Order not found");
   }
+  if (order.isPaid) {
+    return res.status(200).json(order);
+  }
+
   order.isPaid = true;
   order.paidAt = Date.now();
 
   order.paymentResult = {
     id: req.body.paymentId || req.body.id,
     status: req.body.status || "COMPLETED",
-    update_time: req.body.update_time || new Date().toISOString(),
+    update_time:
+      req.body.update_time ||
+      req.body.updateTime ||
+      new Date().toISOString(),
     email_address:
       req.body.email_address ||
+      req.body.emailAddress ||
       req.body.payer?.email_address ||
+      req.body.payer?.emailAddress ||
       "not.provided@example.com",
   };
 

@@ -16,7 +16,7 @@ router.get('/config/paypal', (req, res) => {
     const clientId = process.env.PAYPAL_CLIENT_ID;
 
     if (!clientId) {
-        res.status(500).json({
+        return res.status(500).json({
             error: "Paypal client id is not configured"
         });
     }
