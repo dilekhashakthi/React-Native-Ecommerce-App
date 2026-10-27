@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Picker } from "@react-native-picker/picker";
@@ -19,7 +19,10 @@ import { Colors } from "../../constants/Utils";
 const Cart = () => {
   const router = useRouter();
   const dispatch = useDispatch();
+
   const { cartItems } = useSelector((state) => state.cart);
+  const { userInfo } = useSelector((state) => state.auth);
+
   const totalItems = cartItems.reduce((acc, item) => acc + item.qty, 0);
   const totalPrice = cartItems
     .reduce((acc, item) => acc + item.qty * item.price, 0)
@@ -33,10 +36,23 @@ const Cart = () => {
     dispatch(removeFromCart(productId));
   };
 
+  const handlerCheckout = () => {
+    if (userInfo) {
+      router.push("(screens)/ShippingScreen");
+    } else {
+      router.push({
+        pathname: "(screens)/LoginScreen",
+        params: {
+          redirect: "(screens)/ShippingScreen",
+        },
+      });
+    }
+  };
+
   const renderItem = ({ item }) => {
     const maxQty = Math.max(
       Number(item.countInStock) > 0 ? Number(item.countInStock) : 10,
-      Number(item.qty) || 1
+      Number(item.qty) || 1,
     );
 
     return (
@@ -64,11 +80,7 @@ const Cart = () => {
               <Text style={styles.qtyText} numberOfLines={1}>
                 {item.qty}
               </Text>
-              <Ionicons
-                name="caret-down"
-                size={12}
-                color={Colors.darkGray}
-              />
+              <Ionicons name="caret-down" size={12} color={Colors.darkGray} />
             </View>
             <Picker
               selectedValue={Number(item.qty)}
@@ -144,7 +156,14 @@ const Cart = () => {
                 <Text style={styles.label}>Total: </Text>
                 <Text style={styles.value}>${totalPrice}</Text>
               </View>
-              <TouchableOpacity style={styles.checkoutButton}>
+              <TouchableOpacity
+                style={[
+                  styles.checkoutButton,
+                  cartItems.length === 0 && styles.checkoutDisabled,
+                ]}
+                onPress={handlerCheckout}
+                disabled={cartItems.length === 0}
+              >
                 <Text style={styles.checkoutButtonText}>
                   Proceed to Checkout
                 </Text>
@@ -338,5 +357,8 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: "bold",
+  },
+  checkoutDisabled: {
+    backgroundColor: Colors.darkGray,
   },
 });
