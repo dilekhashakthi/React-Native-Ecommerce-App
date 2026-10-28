@@ -7,7 +7,12 @@ const {
 
 const router = express.Router();
 
-// GET /api/v1/paypal/config - Get PayPal client ID
+// These intercept URLs are used by the React Native WebView to detect
+// when PayPal completes or cancels. They don't need to be real pages.
+const PAYPAL_RETURN_URL = "https://example.com/paypal-return";
+const PAYPAL_CANCEL_URL = "https://example.com/paypal-cancel";
+
+// GET /api/v1/config/paypal - Get PayPal client ID (kept for backwards compat)
 router.get("/config", (req, res) => {
   const clientId = process.env.PAYPAL_CLIENT_ID;
   if (!clientId) {
@@ -15,20 +20,16 @@ router.get("/config", (req, res) => {
       error: "PayPal client ID is not configured in .env",
     });
   }
-  return res.status(200).json({
-    clientId,
-  });
+  return res.status(200).json({ clientId });
 });
 
-// POST /api/v1/paypal/create-order - Create a new PayPal order
-router.post("/create-order", async (req, res) => {
+// POST /api/v1/paypal/create-order - Create a PayPal order and return approval URL
+router.post(["/create-order", "/create-orders"], async (req, res) => {
   try {
     const { amount, currency } = req.body;
 
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      return res.status(400).json({
-        error: "Invalid amount provided",
-      });
+      return res.status(400).json({ error: "Invalid amount provided" });
     }
 
     const formattedAmount = Number(amount).toFixed(2);
@@ -45,6 +46,18 @@ router.post("/create-order", async (req, res) => {
             },
           },
         ],
+        // paymentSource tells PayPal where to redirect after approve/cancel.
+        // The WebView watches for these URLs to detect the outcome.
+        paymentSource: {
+          paypal: {
+            experienceContext: {
+              returnUrl: PAYPAL_RETURN_URL,
+              cancelUrl: PAYPAL_CANCEL_URL,
+              userAction: "PAY_NOW",
+              landingPage: "LOGIN",
+            },
+          },
+        },
       },
       prefer: "return=representation",
     });
@@ -54,10 +67,15 @@ router.post("/create-order", async (req, res) => {
         ? JSON.parse(response.body)
         : response.result || {};
 
+    const links = rawData.links || response.result?.links || [];
+    const approvalLink = links.find((l) => l.rel === "approve");
+
     return res.status(200).json({
       id: rawData.id || response.result?.id,
       status: rawData.status || response.result?.status,
-      links: rawData.links || response.result?.links || [],
+      // approvalUrl is the PayPal-hosted checkout page — open this in the WebView
+      approvalUrl: approvalLink?.href || null,
+      links,
     });
   } catch (error) {
     const statusCode = error.statusCode || 500;
@@ -135,14 +153,12 @@ function formatCaptureData(order) {
 }
 
 // POST /api/v1/paypal/capture-order - Capture an approved PayPal order
-router.post("/capture-order", async (req, res) => {
+router.post(["/capture-order", "/capture-orders"], async (req, res) => {
   try {
     const { orderId } = req.body;
 
     if (!orderId) {
-      return res.status(400).json({
-        error: "No order ID provided",
-      });
+      return res.status(400).json({ error: "No order ID provided" });
     }
 
     let response;
@@ -217,4 +233,3 @@ router.get("/order/:orderId", async (req, res) => {
 });
 
 module.exports = router;
-

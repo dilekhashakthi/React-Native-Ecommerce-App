@@ -16,7 +16,9 @@ const authSlice = createSlice({
 
     logout: (state, action) => {
       state.userInfo = null;
-      AsyncStorage.clear();
+      // Only remove the user-specific key, NOT the whole AsyncStorage.
+      // AsyncStorage.clear() would wipe redux-persist's "root" key and erase the cart.
+      AsyncStorage.removeItem("userInfo");
     },
   },
 });

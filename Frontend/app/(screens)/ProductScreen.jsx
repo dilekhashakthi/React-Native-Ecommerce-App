@@ -8,7 +8,7 @@ import {
   Platform,
   SafeAreaView,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Toast from "react-native-toast-message";
 import {
   useGetProductDetailsQuery,
@@ -17,7 +17,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/Utils";
 import { useDispatch, useSelector } from "react-redux";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { addToCart } from "../../redux/slices/cartSlice";
 
 import Message from "../../components/Message";
@@ -62,6 +62,12 @@ const ProductScreen = () => {
     error,
   } = useGetProductDetailsQuery(productId);
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
   if (isLoading) {
     return (
       <View>
@@ -71,7 +77,10 @@ const ProductScreen = () => {
   }
 
   if (error) {
-    const errorMessage = error?.data?.message || error?.error || "Something went wrong. Please try again.";
+    const errorMessage =
+      error?.data?.message ||
+      error?.error ||
+      "Something went wrong. Please try again.";
 
     return (
       <View style={styles.center}>
@@ -116,7 +125,7 @@ const ProductScreen = () => {
     }
   };
 
-  const disabledAddToCart = product?.countInStock === 0;
+  // const disabledAddToCart = product?.countInStock === 0;
 
   const submitReviewHandler = async () => {
     try {
@@ -162,7 +171,10 @@ const ProductScreen = () => {
       setComment("");
       setIsReviewModelOpen(false);
     } catch (error) {
-      const errorMessage = error?.data?.message || error?.error || "Something went wrong. Please try again.";
+      const errorMessage =
+        error?.data?.message ||
+        error?.error ||
+        "Something went wrong. Please try again.";
       if (errorMessage.toLowerCase().includes("already reviewed")) {
         setIsReviewModelOpen(false);
       }
@@ -191,7 +203,7 @@ const ProductScreen = () => {
           qty={qty}
           setQty={setQty}
           handleAddToCart={handleAddToCart}
-          disableAddToCart={disabledAddToCart}
+          disableAddToCart={product?.countInStock === 0}
         />
 
         <ProductReviewSection
