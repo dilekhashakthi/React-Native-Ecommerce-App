@@ -7,12 +7,7 @@ const {
 
 const router = express.Router();
 
-// These intercept URLs are used by the React Native WebView to detect
-// when PayPal completes or cancels. They don't need to be real pages.
-const PAYPAL_RETURN_URL = "https://example.com/paypal-return";
-const PAYPAL_CANCEL_URL = "https://example.com/paypal-cancel";
-
-// GET /api/v1/config/paypal - Get PayPal client ID (kept for backwards compat)
+// GET /api/v1/paypal/config - Get PayPal client ID
 router.get("/config", (req, res) => {
   const clientId = process.env.PAYPAL_CLIENT_ID;
   if (!clientId) {
@@ -46,18 +41,6 @@ router.post(["/create-order", "/create-orders"], async (req, res) => {
             },
           },
         ],
-        // paymentSource tells PayPal where to redirect after approve/cancel.
-        // The WebView watches for these URLs to detect the outcome.
-        paymentSource: {
-          paypal: {
-            experienceContext: {
-              returnUrl: PAYPAL_RETURN_URL,
-              cancelUrl: PAYPAL_CANCEL_URL,
-              userAction: "PAY_NOW",
-              landingPage: "LOGIN",
-            },
-          },
-        },
       },
       prefer: "return=representation",
     });
@@ -67,14 +50,10 @@ router.post(["/create-order", "/create-orders"], async (req, res) => {
         ? JSON.parse(response.body)
         : response.result || {};
 
-    const links = rawData.links || response.result?.links || [];
-    const approvalLink = links.find((l) => l.rel === "approve");
-
     return res.status(200).json({
       id: rawData.id || response.result?.id,
       status: rawData.status || response.result?.status,
-      // approvalUrl is the PayPal-hosted checkout page — open this in the WebView
-      approvalUrl: approvalLink?.href || null,
+      links: rawData.links || response.result?.links || [],
       links,
     });
   } catch (error) {
