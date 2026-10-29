@@ -2,6 +2,7 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useMemo,
   useCallback,
 } from "react";
 import {
@@ -12,6 +13,7 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
+// import { useRoute } from "@react-navigation/native"; ✅
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
@@ -35,13 +37,16 @@ import OrderSummary from "../../components/OrderSummary";
 import PayPalPayment from "../../components/PayPalPayment";
 
 export default function OrderScreen() {
+  // const route = useRoute(); ✅✅
+  // const { orderId } = route.params || {}; ✅✅
+
+  // ✅✅
   const { orderId } = useLocalSearchParams();
 
   // --- State ---
   const [showWebViewModal, setShowWebViewModal] = useState(false);
-  const [paypalApprovalUrl, setPaypalApprovalUrl] = useState(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const webviewRef = useRef(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // --- RTK Query Hooks ---
   const {
@@ -53,16 +58,14 @@ export default function OrderScreen() {
 
   const [
     createPayPalOrder,
-    { isLoading: isCreatingPayPalOrder },
+    { isLoading: isCreatingPayPalOrder, error: createPayPalError },
   ] = useCreatePaypalOrderMutation();
-
   const [
     capturePayPalOrder,
-    { isLoading: isCapturingPayPalOrder },
+    { isLoading: isCapturingPayPalOrder, error: capturePayPalError },
   ] = useCapturePaypalOrderMutation();
-
-  const [payOrder, { isLoading: isPayingOrder }] = usePayOrderMutation();
-
+  const [payOrder, { isLoading: isPayingOrder, error: payOrderError }] =
+    usePayOrderMutation();
   const [deliverOrder, { isLoading: isLoadingDeliver, error: deliverError }] =
     useDeliverOrderMutation();
 
@@ -75,7 +78,7 @@ export default function OrderScreen() {
   // --- Redux State ---
   const { userInfo } = useSelector((state) => state.auth);
 
-  // --- Effects ---
+  // --- Effects & Memos ---
   useEffect(() => {
     if (orderError) {
       Toast.show({
@@ -96,19 +99,24 @@ export default function OrderScreen() {
         visibilityTime: 7000,
       });
     }
-  }, [orderError, deliverError]);
+  }, [orderError, paypalConfig, order, deliverError]);
 
-  /**
-   * Step 1 — User taps "Pay with PayPal".
-   * Creates the order on the backend and gets the PayPal-hosted checkout URL.
-   * Opens the WebView modal with that URL.
-   */
-  const handlePaypalPress = useCallback(async () => {
+  const handlePaypalPress = useCallback(() => {
     if (!order) {
       Toast.show({
         type: "error",
         text1: "Error",
         text2: "Order details not loaded. Please try again.",
+        position: "top",
+        visibilityTime: 7000,
+      });
+      return;
+    }
+    if (!paypalConfig?.clientId) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "PayPal configuration not loaded. Please try again.",
         position: "top",
         visibilityTime: 7000,
       });
@@ -124,119 +132,407 @@ export default function OrderScreen() {
       });
       return;
     }
+    setShowWebViewModal(true);
+  }, [order, paypalConfig]);
 
-    setIsProcessingPayment(true);
-    try {
-      const res = await createPayPalOrder(order.totalPrice).unwrap();
+  const paypalHtml = useMemo(
+    () => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://*.paypal.com https://*.sandbox.paypal.com;">
+        <title>PayPal Payment</title>
+        <style>
+          body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            padding: 20px;
+          }
+          #paypal-button-container {
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+          }
+          .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+          }
+          .error { background-color: #ffebee; color: #c62828; }
+          .success { background-color: #e8f5e9; color: #2e7d32; }
+          .info { background-color: #e3f2fd; color: #1565c0; }
+        </style>
+      </head>
+      <body>
+        <div id="paypal-button-container"></div>
+        <div id="status-container"></div>
+        <script>
+          // Show initial loading state
+          function showStatus(message, type = 'info') {
+            const container = document.getElementById('status-container');
+            const div = document.createElement('div');
+            div.className = 'status ' + type;
+            div.textContent = message;
+            container.innerHTML = ''; // Clear previous messages
+            container.appendChild(div);
+            if (type !== 'error') {
+              setTimeout(() => div.remove(), 5000);
+            }
+          }
 
-      // The backend returns approvalUrl (or it's in the links array)
-      const approvalUrl =
-        res.approvalUrl ||
-        res.links?.find((l) => l.rel === "approve")?.href;
+          showStatus('Loading PayPal...', 'info');
 
-      if (!approvalUrl) {
-        throw new Error(
-          "PayPal did not return a checkout URL. Please try again."
-        );
-      }
+          // Handle navigation errors
+          window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'IFRAME' || e.target.tagName === 'IMG') {
+              // Ignore resource loading errors
+              return;
+            }
+            showStatus('Navigation error occurred. Please try again.', 'error');
+          }, true);
 
-      setPaypalApprovalUrl(approvalUrl);
-      setShowWebViewModal(true);
-    } catch (err) {
-      Toast.show({
-        type: "error",
-        text1: "PayPal Error",
-        text2:
-          err?.data?.message ||
-          err?.data?.details ||
-          err?.message ||
-          "Failed to start PayPal checkout. Please try again.",
-        position: "top",
-        visibilityTime: 7000,
-      });
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  }, [order, createPayPalOrder]);
+          // Load PayPal SDK with retry mechanism
+          function loadPayPalSDK(retryCount = 0) {
+            const script = document.createElement('script');
+            script.src = "https://www.paypal.com/sdk/js?client-id=${paypalConfig?.clientId}&currency=USD&intent=capture";
+            script.async = true;
+            
+            script.onload = function() {
+              showStatus('PayPal SDK loaded successfully', 'success');
+              initializePayPalButtons();
+            };
+            
+            script.onerror = function() {
+              if (retryCount < 3) {
+                showStatus('Retrying PayPal SDK load...', 'info');
+                setTimeout(() => loadPayPalSDK(retryCount + 1), 2000);
+              } else {
+                showStatus('Failed to load PayPal SDK. Please try again later.', 'error');
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'PAYPAL_ERROR',
+                  error: 'Failed to load PayPal SDK after multiple attempts'
+                }));
+              }
+            };
+            
+            document.head.appendChild(script);
+          }
 
-  /**
-   * Step 2 — PayPal redirects to the return URL after the user approves.
-   * The WebView intercepts this URL and calls this handler with the PayPal order token.
-   * We capture the payment and mark the order as paid.
-   */
-  const handlePaypalApproved = useCallback(
-    async (paypalOrderId) => {
-      setShowWebViewModal(false);
-      setPaypalApprovalUrl(null);
-      setIsProcessingPayment(true);
+          function initializePayPalButtons() {
+            if (!window.paypal) {
+              showStatus('PayPal SDK not initialized properly', 'error');
+              return;
+            }
 
+            paypal.Buttons({
+              createOrder: function(data, actions) {
+                showStatus('Creating PayPal order...', 'info');
+                return new Promise((resolve, reject) => {
+                  window.resolveCreateOrderPromise = resolve;
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'REQUEST_PAYPAL_ORDER_ID'
+                  }));
+                  
+                  setTimeout(() => {
+                    if (window.resolveCreateOrderPromise) {
+                      const error = 'PayPal Order ID request timed out';
+                      showStatus(error, 'error');
+                      reject(new Error(error));
+                      window.resolveCreateOrderPromise = null;
+                    }
+                  }, 30000);
+                });
+              },
+              
+              onApprove: function(data, actions) {
+                showStatus('Payment approved! Processing...', 'success');
+                // Immediately notify React Native to close modal and show loading
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'PAYPAL_APPROVED',
+                  orderID: data.orderID,
+                  payerID: data.payerID,
+                  paymentID: data.paymentID
+                }));
+              },
+              
+              onCancel: function(data) {
+                showStatus('Payment cancelled by user', 'info');
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'PAYPAL_CANCELLED'
+                }));
+              },
+              
+              onError: function(err) {
+                const errorMessage = err.message || err.toString();
+                // Check if the error is related to authentication
+                if (errorMessage.includes('blocked') || errorMessage.includes('authentication')) {
+                  showStatus('Session expired. Please try again.', 'error');
+                  // Close the WebView after a short delay
+                  setTimeout(() => {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'PAYPAL_AUTH_ERROR',
+                      error: 'Authentication session expired'
+                    }));
+                  }, 2000);
+                } else {
+                  showStatus('Payment error: ' + errorMessage, 'error');
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'PAYPAL_ERROR',
+                    error: errorMessage
+                  }));
+                }
+              }
+            }).render('#paypal-button-container')
+              .catch(error => {
+                showStatus('Failed to render PayPal buttons: ' + error, 'error');
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'PAYPAL_ERROR',
+                  error: 'Failed to render PayPal buttons: ' + error
+                }));
+              });
+          }
+
+          function handleReactNativeMessage(event) {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === 'SET_PAYPAL_ORDER_ID' && window.resolveCreateOrderPromise) {
+                window.resolveCreateOrderPromise(data.orderID);
+                window.resolveCreateOrderPromise = null;
+                showStatus('Processing payment...', 'info');
+              } else if (data.type === 'PAYPAL_ERROR_FROM_RN') {
+                showStatus(data.error, 'error');
+              }
+            } catch (e) {
+              showStatus('Communication error: ' + e.message, 'error');
+            }
+          }
+
+          document.addEventListener('message', handleReactNativeMessage);
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.onMessage = handleReactNativeMessage;
+          }
+
+          // Start loading PayPal SDK
+          loadPayPalSDK();
+        </script>
+      </body>
+    </html>
+  `,
+    [paypalConfig?.clientId]
+  );
+
+  const onMessage = useCallback(
+    async (event) => {
       try {
-        const captureResponse = await capturePayPalOrder(paypalOrderId).unwrap();
+        const data = JSON.parse(event.nativeEvent.data);
+        switch (data.type) {
+          case "PAYPAL_APPROVED":
+            // Close the modal and show loading indicator
+            setShowWebViewModal(false);
+            setIsProcessingPayment(true);
 
-        if (captureResponse.status === "COMPLETED") {
-          await payOrder({
-            orderId,
-            paymentId: captureResponse.id,
-            status: captureResponse.status,
-            update_time:
-              captureResponse.update_time || new Date().toISOString(),
-            email_address:
-              captureResponse.payer?.email_address ||
-              captureResponse.payer?.emailAddress ||
-              "not.provided@example.com",
-          }).unwrap();
+            try {
+              const captureResponse = await capturePayPalOrder(
+                data.orderID
+              ).unwrap();
 
-          Toast.show({
-            type: "success",
-            text1: "Payment Successful!",
-            text2: "Your order has been paid.",
-            position: "top",
-            visibilityTime: 7000,
-          });
-          refetchOrder();
-        } else {
-          Toast.show({
-            type: "error",
-            text1: "Payment Failed",
-            text2: `PayPal payment status: ${captureResponse.status || "Unknown"}`,
-            position: "top",
-            visibilityTime: 7000,
-          });
+              if (captureResponse.status === "COMPLETED") {
+                const paymentResult = {
+                  orderId,
+                  paymentId: captureResponse.id,
+                  status: captureResponse.status,
+                  update_time: new Date().toISOString(),
+                  email_address:
+                    captureResponse.payer?.email_address ||
+                    "not.provided@example.com",
+                };
+
+                await payOrder({
+                  orderId: orderId,
+                  ...paymentResult,
+                }).unwrap();
+
+                Toast.show({
+                  type: "success",
+                  text1: "Success",
+                  text2: "Payment successful! Your order has been placed.",
+                  position: "top",
+                  visibilityTime: 7000,
+                });
+                refetchOrder();
+              } else {
+                Toast.show({
+                  type: "error",
+                  text1: "Payment Failed",
+                  text2: `PayPal payment capture failed. Status: ${
+                    captureResponse.status || "Unknown"
+                  }`,
+                  position: "top",
+                  visibilityTime: 7000,
+                });
+              }
+            } catch (err) {
+              const errorMessage =
+                err?.data?.details ||
+                err?.data?.message ||
+                err.message ||
+                "Unknown error occurred";
+              Toast.show({
+                type: "error",
+                text1: "Payment Error",
+                text2: `Failed to capture PayPal payment: ${errorMessage}`,
+                position: "top",
+                visibilityTime: 7000,
+              });
+            } finally {
+              setIsProcessingPayment(false);
+            }
+            break;
+
+          case "PAYPAL_AUTH_ERROR":
+            setShowWebViewModal(false);
+            setIsProcessingPayment(false);
+            Toast.show({
+              type: "info",
+              text1: "PayPal Session Expired",
+              text2: "Please try the payment again.",
+              position: "top",
+              visibilityTime: 7000,
+            });
+            break;
+
+          case "REQUEST_PAYPAL_ORDER_ID":
+            if (!order || !order.totalPrice) {
+              const errorMessage =
+                "Order details or total price missing for PayPal order creation.";
+              Toast.show({
+                type: "error",
+                text1: "Payment Error",
+                text2: errorMessage,
+                position: "top",
+                visibilityTime: 7000,
+              });
+              webviewRef.current?.postMessage(
+                JSON.stringify({
+                  type: "PAYPAL_ERROR_FROM_RN",
+                  error: errorMessage,
+                })
+              );
+              setShowWebViewModal(false);
+              return;
+            }
+            try {
+              const res = await createPayPalOrder(order.totalPrice).unwrap();
+              if (res.id) {
+                webviewRef.current?.postMessage(
+                  JSON.stringify({
+                    type: "SET_PAYPAL_ORDER_ID",
+                    orderID: res.id,
+                  })
+                );
+              } else {
+                const errorMessage =
+                  "No PayPal ID received from backend create order response.";
+                Toast.show({
+                  type: "error",
+                  text1: "Payment Error",
+                  text2: errorMessage,
+                  position: "top",
+                  visibilityTime: 7000,
+                });
+                webviewRef.current?.postMessage(
+                  JSON.stringify({
+                    type: "PAYPAL_ERROR_FROM_RN",
+                    error: errorMessage,
+                  })
+                );
+                setShowWebViewModal(false);
+              }
+            } catch (err) {
+              const errorMessage = `Failed to create PayPal order on backend: ${
+                err?.data?.message || err.message || err.toString()
+              }`;
+              Toast.show({
+                type: "error",
+                text1: "Payment Error",
+                text2: errorMessage,
+                position: "top",
+                visibilityTime: 7000,
+              });
+              webviewRef.current?.postMessage(
+                JSON.stringify({
+                  type: "PAYPAL_ERROR_FROM_RN",
+                  error: errorMessage,
+                })
+              );
+              setShowWebViewModal(false);
+            }
+            break;
+
+          case "PAYPAL_CANCELLED":
+            Toast.show({
+              type: "info",
+              text1: "Payment Cancelled",
+              text2: "You cancelled the PayPal payment process.",
+              position: "top",
+              visibilityTime: 7000,
+            });
+            setShowWebViewModal(false);
+            break;
+
+          case "PAYPAL_ERROR":
+            Toast.show({
+              type: "error",
+              text1: "Payment Error",
+              text2: `An error occurred during PayPal payment: ${data.error}`,
+              position: "top",
+              visibilityTime: 7000,
+            });
+            setShowWebViewModal(false);
+            break;
+
+          default:
+            Toast.show({
+              type: "error",
+              text1: "Error",
+              text2:
+                "An unexpected error occurred with the PayPal payment message.",
+              position: "top",
+              visibilityTime: 7000,
+            });
+            setShowWebViewModal(false);
         }
-      } catch (err) {
-        const errorMessage =
-          err?.data?.details ||
-          err?.data?.message ||
-          err?.message ||
-          "Unknown error occurred";
+      } catch (e) {
+        setIsProcessingPayment(false);
         Toast.show({
           type: "error",
-          text1: "Payment Error",
-          text2: `Failed to capture PayPal payment: ${errorMessage}`,
+          text1: "Error",
+          text2: "An unexpected error occurred processing the payment.",
           position: "top",
           visibilityTime: 7000,
         });
-      } finally {
-        setIsProcessingPayment(false);
       }
     },
-    [orderId, capturePayPalOrder, payOrder, refetchOrder]
+    [
+      order,
+      orderId,
+      createPayPalOrder,
+      capturePayPalOrder,
+      payOrder,
+      refetchOrder,
+    ]
   );
-
-  /**
-   * Step 2 (alt) — User cancelled on the PayPal page.
-   */
-  const handlePaypalCancelled = useCallback(() => {
-    setShowWebViewModal(false);
-    setPaypalApprovalUrl(null);
-    Toast.show({
-      type: "info",
-      text1: "Payment Cancelled",
-      text2: "You cancelled the PayPal payment.",
-      position: "top",
-      visibilityTime: 5000,
-    });
-  }, []);
 
   const deliverHandler = async () => {
     try {
@@ -302,7 +598,7 @@ export default function OrderScreen() {
           userInfo={userInfo}
           isLoadingDeliver={isLoadingDeliver}
           isLoadingPayPalConfig={isLoadingPayPalConfig}
-          isCreatingPayPalOrder={isCreatingPayPalOrder || isProcessingPayment}
+          isCreatingPayPalOrder={isCreatingPayPalOrder}
           isCapturingPayPalOrder={isCapturingPayPalOrder}
           isPayingOrder={isPayingOrder}
           paypalConfigError={paypalConfigError}
@@ -312,16 +608,11 @@ export default function OrderScreen() {
         />
       </ScrollView>
 
-      {/* PayPal WebView Modal — opens the real PayPal checkout page */}
       <PayPalPayment
         visible={showWebViewModal}
-        onClose={() => {
-          setShowWebViewModal(false);
-          setPaypalApprovalUrl(null);
-        }}
-        approvalUrl={paypalApprovalUrl}
-        onPaymentApproved={handlePaypalApproved}
-        onPaymentCancelled={handlePaypalCancelled}
+        onClose={() => setShowWebViewModal(false)}
+        paypalHtml={paypalHtml}
+        onMessage={onMessage}
         webviewRef={webviewRef}
       />
 

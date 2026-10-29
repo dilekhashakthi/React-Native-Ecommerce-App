@@ -23,7 +23,6 @@ const OrderSummary = ({
   onMarkAsDelivered,
 }) => {
   const router = useRouter();
-
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Order Summary</Text>
