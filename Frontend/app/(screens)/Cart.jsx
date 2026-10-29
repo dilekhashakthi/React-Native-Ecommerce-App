@@ -36,6 +36,14 @@ const Cart = () => {
     dispatch(removeFromCart(productId));
   };
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+  };
+
   const handlerCheckout = () => {
     if (userInfo) {
       router.push("(screens)/ShippingScreen");
@@ -117,7 +125,7 @@ const Cart = () => {
         <View style={styles.headerContainer}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={handleGoBack}
           >
             <Ionicons
               name="arrow-back-circle"
@@ -131,7 +139,7 @@ const Cart = () => {
         {cartItems.length === 0 ? (
           <Message variant="info" style={styles.emptyMessage}>
             Your cart is empty{" "}
-            <Text style={styles.backLink} onPress={() => router.back()}>
+            <Text style={styles.backLink} onPress={handleGoBack}>
               Go back
             </Text>
           </Message>

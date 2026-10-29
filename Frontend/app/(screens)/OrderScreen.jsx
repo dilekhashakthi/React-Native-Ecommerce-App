@@ -12,9 +12,11 @@ import {
   ActivityIndicator,
   StyleSheet,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 // import { useRoute } from "@react-navigation/native"; ✅
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import Toast from "react-native-toast-message";
@@ -42,6 +44,15 @@ export default function OrderScreen() {
 
   // ✅✅
   const { orderId } = useLocalSearchParams();
+  const router = useRouter();
+
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)/orders");
+    }
+  };
 
   // --- State ---
   const [showWebViewModal, setShowWebViewModal] = useState(false);
@@ -593,7 +604,19 @@ export default function OrderScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.mainTitle}>Order {order._id}</Text>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleGoBack}
+          >
+            <Ionicons
+              name="arrow-back-circle"
+              size={40}
+              color={Colors.primary}
+            />
+          </TouchableOpacity>
+          <Text style={styles.mainTitle}>Order {order._id}</Text>
+        </View>
 
         <OrderDetails order={order} />
         <PaymentStatus order={order} />
@@ -657,11 +680,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.offWhite,
   },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 10,
+  },
+  backButton: {
+    padding: 0,
+  },
   mainTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: Colors.primary,
-    marginBottom: 24,
+    flex: 1,
     textAlign: "start",
   },
   loadingText: {
