@@ -24,7 +24,9 @@ export const updateCart = (state) => {
 
   state.totalPrice = addDecimals(totalPrice);
 
-  AsyncStorage.setItem("cart", JSON.stringify(state));
+  AsyncStorage.setItem("cart", JSON.stringify(state)).catch((err) =>
+    console.log("Error saving cart to storage:", err)
+  );
 
   return state;
 };
