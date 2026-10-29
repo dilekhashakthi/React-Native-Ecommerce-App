@@ -305,7 +305,7 @@ export default function OrderScreen() {
 
           function handleReactNativeMessage(event) {
             try {
-              const data = JSON.parse(event.data);
+              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
               if (data.type === 'SET_PAYPAL_ORDER_ID' && window.resolveCreateOrderPromise) {
                 window.resolveCreateOrderPromise(data.orderID);
                 window.resolveCreateOrderPromise = null;
@@ -319,6 +319,7 @@ export default function OrderScreen() {
           }
 
           document.addEventListener('message', handleReactNativeMessage);
+          window.addEventListener('message', handleReactNativeMessage);
           if (window.ReactNativeWebView) {
             window.ReactNativeWebView.onMessage = handleReactNativeMessage;
           }
@@ -461,7 +462,11 @@ export default function OrderScreen() {
               }
             } catch (err) {
               const errorMessage = `Failed to create PayPal order on backend: ${
-                err?.data?.message || err.message || err.toString()
+                err?.data?.details ||
+                err?.data?.message ||
+                err?.data?.error ||
+                err.message ||
+                err.toString()
               }`;
               Toast.show({
                 type: "error",

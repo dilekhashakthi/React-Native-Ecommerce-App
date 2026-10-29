@@ -25,7 +25,7 @@ const PayPalPayment = ({
           <Pressable onPress={onClose} style={styles.closeButton}>
             <AntDesign
               style={styles.closeButtonIcon}
-              name="closecircle"
+              name="close-circle"
               size={27}
             />
           </Pressable>

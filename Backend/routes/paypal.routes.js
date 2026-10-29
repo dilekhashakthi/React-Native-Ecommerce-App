@@ -54,7 +54,6 @@ router.post(["/create-order", "/create-orders"], async (req, res) => {
       id: rawData.id || response.result?.id,
       status: rawData.status || response.result?.status,
       links: rawData.links || response.result?.links || [],
-      links,
     });
   } catch (error) {
     const statusCode = error.statusCode || 500;
